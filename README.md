@@ -1,0 +1,1 @@
+This is IntelliMock, an AI Interview Mock Platform.
