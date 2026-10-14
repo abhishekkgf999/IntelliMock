@@ -119,13 +119,13 @@ const Home = () => {
                 transition={{ duration: 0.6 + index * 0.2 }}
                 whileHover={{ rotate: 0, scale: 1.06 }}
                 className={`
-      relative bg-white rounded-3xl border-2 border-green-100
-      hover:border-green-500 p-10 w-80 max-w-[90%] shadow-md
-      hover:shadow-2xl transition-all duration-300
-      ${index === 0 ? "rotate-[-4deg]" : ""}
-      ${index === 1 ? "rotate-[3deg] md:-mt-6 shadow-xl" : ""}
-      ${index === 2 ? "rotate-[-3deg]" : ""}
-    `}
+                  relative bg-white rounded-3xl border-2 border-green-100
+                  hover:border-green-500 p-10 w-80 max-w-[90%] shadow-md
+                  hover:shadow-2xl transition-all duration-300
+                  ${index === 0 ? "rotate-[-4deg]" : ""}
+                  ${index === 1 ? "rotate-[3deg] md:-mt-6 shadow-xl" : ""}
+                  ${index === 2 ? "rotate-[-3deg]" : ""}
+                `}
               >
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white border-2 border-green-500 text-green-600 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg">
                   {item.icon}
@@ -248,23 +248,26 @@ const Home = () => {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  whileHover={{ y:-1}}
+                  whileHover={{ y: -1 }}
                   className="bg-white border border-gray-200 rounded-3xl  p-8 shadow-sm hover:shadow-xl transition-all"
                 >
                   <div className=" flex items-center justify-between gap-6">
                     <div className="w-1/2">
-                     <h3 className="font-semibold mb-3 text-xl">
+                      <h3 className="font-semibold mb-3 text-xl">
                         {mode.title}
                       </h3>
                     </div>
-                    
-                      <p className="text-gray-500 text-sm leading-relaxed">
-                        {mode.desc}
-                      </p>
+
+                    <p className="text-gray-500 text-sm leading-relaxed">
+                      {mode.desc}
+                    </p>
                   </div>
                   <div className="w-1/2 flex justify-end">
-                    <img src={mode.img} alt={mode.title} className="w-28 h-28 object-contain"/>
-                    
+                    <img
+                      src={mode.img}
+                      alt={mode.title}
+                      className="w-28 h-28 object-contain"
+                    />
                   </div>
                 </motion.div>
               ))}
@@ -273,7 +276,7 @@ const Home = () => {
         </div>
       </div>
       {showAuth && <AuthModel onClose={() => setShowAuth(false)} />}
-      <Footer/>
+      <Footer />
     </div>
   );
 };
