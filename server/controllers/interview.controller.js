@@ -4,7 +4,7 @@ import User from "../models/user.model.js";
 import Interview from "../models/interview.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
-import ApiResponse from "../utils/apiResponse.js";
+import ApiResponse from "../utils/ApiResponse.js";
 import { extractTextFromPdf } from "../utils/extractTextFromPdf.js";
 
 const analyzeResume = asyncHandler(async (req, res) => {
@@ -16,7 +16,7 @@ const analyzeResume = asyncHandler(async (req, res) => {
 
   try {
     const fileBuffer = await fs.promises.readFile(filepath);
-    const resumeText = extractTextFromPdf(fileBuffer);
+    const resumeText = await extractTextFromPdf(fileBuffer);
 
     if (!resumeText?.trim()) {
       throw new ApiError(400, "Unable to extract text from resume");
