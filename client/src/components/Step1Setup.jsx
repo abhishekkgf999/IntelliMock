@@ -34,13 +34,13 @@ function Setp1Setup({ onStart }) {
     formdata.append("resume", resumeFile);
     try {
       const result = await api.post("/api/interview/resume", formdata);
-      console.log(result.data);
+      const resumeData = result.data.data;
 
-      setRole(result.data.role || "");
-      setExperience(result.data.experience || "");
-      setProjects(result.data.projects || []);
-      setSkills(result.data.skills || []);
-      setResumeText(result.data.resumeText || "");
+      setRole(resumeData.role || "");
+      setExperience(resumeData.experience || "");
+      setProjects(resumeData.projects || []);
+      setSkills(resumeData.skills || []);
+      setResumeText(resumeData.resumeText || "");
       setAnalysisDone(true);
       setAnalyzing(false);
     } catch (error) {
@@ -60,12 +60,14 @@ function Setp1Setup({ onStart }) {
         projects,
         skills,
       });
-      console.log(result.data);
+      console.log(result.data.data);
       if (userData) {
-        dispatch(setUserData({ ...userData, credits: result.data.creditLeft }));
+        dispatch(
+          setUserData({ ...userData, credits: result.data.data.creditLeft }),
+        );
       }
       setLoading(false);
-      onStart(result.data);
+      onStart(result.data.data);
     } catch (error) {
       const serverMessage =
         error?.response?.data?.message ||
