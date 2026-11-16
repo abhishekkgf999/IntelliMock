@@ -241,22 +241,49 @@ const submitAnswer = asyncHandler(async (req, res) => {
   const messages = [
     {
       role: "system",
-      content: `Evaluate the candidate's answer. Return strictly valid JSON:
-        {
-          "confidence": number,
-          "communication": number,
-          "correctness": number,
-          "finalScore": number,
-          "feedback": "short feedback"
-        }
+      content: `You are a professional human interviewer evaluating a candidate's answer in a real interview.
 
-        All scores must be between 0 and 100.
-        Feedback should be concise and relevant to the answer.`,
+Evaluate naturally and fairly, like a real person would.
+
+Score the answer in these areas (strictly from 0 to 10):
+1. Confidence – Does the answer sound clear, confident, and well-presented? (0 to 10)
+2. Communication – Is the language simple, clear, and easy to understand? (0 to 10)
+3. Correctness – Is the answer accurate, relevant, and complete? (0 to 10)
+
+Rules:
+- Be realistic and unbiased.
+- Do not give random high scores.
+- If the answer is weak, score low.
+- If the answer is strong and detailed, score high.
+- Consider clarity, structure, and relevance.
+
+Calculate:
+finalScore = average of confidence, communication, and correctness (rounded to nearest whole number, strictly between 0 and 10).
+
+Feedback Rules:
+- Write natural human feedback.
+- 10 to 15 words only.
+- Sound like real interview feedback.
+- Can suggest improvement if needed.
+- Do NOT repeat the question.
+- Do NOT explain scoring.
+- Keep tone professional and honest.
+
+Return ONLY valid JSON in this format:
+{
+  "confidence": number,
+  "communication": number,
+  "correctness": number,
+  "finalScore": number,
+  "feedback": "short human feedback"
+}
+
+All scores must strictly be numbers between 0 and 10.`,
     },
     {
       role: "user",
       content: `Question: ${question.question}
-      Answer: ${answer.trim()}`,
+Answer: ${answer.trim()}`,
     },
   ];
 
@@ -288,8 +315,7 @@ const submitAnswer = asyncHandler(async (req, res) => {
       (key) =>
         typeof parsed[key] === "number" &&
         Number.isFinite(parsed[key]) &&
-        parsed[key] >= 0 &&
-        parsed[key] <= 100,
+        parsed[key] >= 0,
     ) ||
     typeof parsed.feedback !== "string" ||
     !parsed.feedback.trim()
@@ -297,11 +323,18 @@ const submitAnswer = asyncHandler(async (req, res) => {
     throw new ApiError(502, "AI returned an invalid evaluation structure");
   }
 
+  const clampScore = (val) => {
+    let num = Number(val);
+    if (!Number.isFinite(num) || num < 0) return 0;
+    if (num > 10) num = num / 10;
+    return Math.min(10, Math.max(0, Number(num.toFixed(1))));
+  };
+
   question.answer = answer;
-  question.confidence = parsed.confidence;
-  question.communication = parsed.communication;
-  question.correctness = parsed.correctness;
-  question.score = parsed.finalScore;
+  question.confidence = clampScore(parsed.confidence);
+  question.communication = clampScore(parsed.communication);
+  question.correctness = clampScore(parsed.correctness);
+  question.score = clampScore(parsed.finalScore);
   question.feedback = parsed.feedback;
 
   await interview.save();
@@ -343,16 +376,23 @@ const finishInterview = asyncHandler(async (req, res) => {
   const questions = interview.questions || [];
   const totalQuestions = questions.length;
 
+  const clampScore = (val) => {
+    let num = Number(val);
+    if (!Number.isFinite(num) || num < 0) return 0;
+    if (num > 10) num = num / 10;
+    return Math.min(10, Math.max(0, Number(num.toFixed(1))));
+  };
+
   let totalScore = 0;
   let totalConfidence = 0;
   let totalCommunication = 0;
   let totalCorrectness = 0;
 
   questions.forEach((q) => {
-    totalScore += q.score || 0;
-    totalConfidence += q.confidence || 0;
-    totalCommunication += q.communication || 0;
-    totalCorrectness += q.correctness || 0;
+    totalScore += clampScore(q.score);
+    totalConfidence += clampScore(q.confidence);
+    totalCommunication += clampScore(q.communication);
+    totalCorrectness += clampScore(q.correctness);
   });
 
   const finalScore = totalQuestions ? totalScore / totalQuestions : 0;
@@ -365,7 +405,7 @@ const finishInterview = asyncHandler(async (req, res) => {
 
   const avgCorrectness = totalQuestions ? totalCorrectness / totalQuestions : 0;
 
-  interview.finalScore = finalScore;
+  interview.finalScore = Number(finalScore.toFixed(1));
   interview.status = "completed";
   
   await interview.save();
@@ -380,11 +420,11 @@ const finishInterview = asyncHandler(async (req, res) => {
         correctness: Number(avgCorrectness.toFixed(1)),
         questionWiseScore: questions.map((q) => ({
           question: q.question,
-          score: q.score || 0,
+          score: clampScore(q.score),
           feedback: q.feedback || "",
-          confidence: q.confidence || 0,
-          communication: q.communication || 0,
-          correctness: q.correctness || 0,
+          confidence: clampScore(q.confidence),
+          communication: clampScore(q.communication),
+          correctness: clampScore(q.correctness),
         })),
       },
       "Interview finished sucessfully",
@@ -392,10 +432,91 @@ const finishInterview = asyncHandler(async (req, res) => {
   );
 });
 
+const getMyInterviews = asyncHandler(async (req, res) => {
+  const interviews = await Interview.find({ userId: req.userId })
+    .sort({ createdAt: -1 })
+    .select("role experience mode finalScore status createdAt");
+
+  const normalizedInterviews = interviews.map((item) => {
+    const rawScore = Number(item.finalScore) || 0;
+    const finalScore = rawScore > 10 ? Number((rawScore / 10).toFixed(1)) : Number(rawScore.toFixed(1));
+    return {
+      ...item.toObject(),
+      finalScore,
+    };
+  });
+
+  return res.status(200).json(normalizedInterviews);
+});
+
+const getInterviewReport = asyncHandler(async (req, res) => {
+  const interview = await Interview.findById(req.params.id);
+
+  if (!interview) {
+    throw new ApiError(404, "Interview not found");
+  }
+
+  const questions = interview.questions || [];
+  const totalQuestions = questions.length;
+
+  const clampScore = (val) => {
+    let num = Number(val);
+    if (!Number.isFinite(num) || num < 0) return 0;
+    if (num > 10) num = num / 10;
+    return Math.min(10, Math.max(0, Number(num.toFixed(1))));
+  };
+
+  let totalConfidence = 0;
+  let totalCommunication = 0;
+  let totalCorrectness = 0;
+  let totalScore = 0;
+
+  questions.forEach((q) => {
+    totalScore += clampScore(q.score);
+    totalConfidence += clampScore(q.confidence);
+    totalCommunication += clampScore(q.communication);
+    totalCorrectness += clampScore(q.correctness);
+  });
+
+  const avgConfidence = totalQuestions
+    ? totalConfidence / totalQuestions
+    : 0;
+
+  const avgCommunication = totalQuestions
+    ? totalCommunication / totalQuestions
+    : 0;
+
+  const avgCorrectness = totalQuestions
+    ? totalCorrectness / totalQuestions
+    : 0;
+
+  const calculatedFinalScore = totalQuestions ? totalScore / totalQuestions : 0;
+  const rawFinalScore = interview.finalScore != null ? interview.finalScore : calculatedFinalScore;
+
+  return res.status(200).json({
+    finalScore: clampScore(rawFinalScore),
+    confidence: Number(avgConfidence.toFixed(1)),
+    communication: Number(avgCommunication.toFixed(1)),
+    correctness: Number(avgCorrectness.toFixed(1)),
+    questionWiseScore: questions.map((q) => {
+      const plain = q.toObject ? q.toObject() : q;
+      return {
+        ...plain,
+        score: clampScore(plain.score),
+        confidence: clampScore(plain.confidence),
+        communication: clampScore(plain.communication),
+        correctness: clampScore(plain.correctness),
+      };
+    }),
+  });
+});
+
 export {
   analyzeResume,
   generateQuestion,
   submitAnswer,
   getHistory,
+  getMyInterviews,
+  getInterviewReport,
   finishInterview,
 };
