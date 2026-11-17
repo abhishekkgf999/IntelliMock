@@ -8,6 +8,7 @@ import { setUserData } from "./redux/userSlice";
 import InterviewPage from "./pages/InterviewPage.jsx";
 import InterviewHistory from "./pages/InterviewHistory";
 import InterviewReport from "./pages/InterviewReport";
+import Pricing from "./pages/Pricing";
 
 export const ServerUrl = "http://localhost:8000";
 
@@ -34,6 +35,7 @@ const App = () => {
       <Route path="/auth" element={<Auth />} />
       <Route path="/interview" element={<InterviewPage />} />
       <Route path="/history" element={<InterviewHistory />} />
+      <Route path="/pricing" element={<Pricing />} />
       <Route path="/report/:id" element={<InterviewReport />} />
     </Routes>
   );
